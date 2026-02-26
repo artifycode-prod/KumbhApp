@@ -22,9 +22,10 @@ const connectDB = async (retryCount = 0) => {
     const safeUrl = connectionString.replace(/:[^:@]+@/, ':****@');
     console.log(`Connection string: ${safeUrl}`);
 
+    const useSSL = connectionString.includes('neon.tech') || connectionString.includes('supabase') || connectionString.includes('sslmode=require');
     pool = new Pool({
       connectionString,
-      ssl: connectionString.includes('neon.tech') ? { rejectUnauthorized: true } : false,
+      ssl: useSSL ? { rejectUnauthorized: connectionString.includes('neon.tech') } : false,
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,

@@ -61,7 +61,7 @@ let connectionAttempted = false;
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URI;
 
 const attemptConnection = async () => {
-  if (connectionAttempted && dbConnected) return;
+  if (dbConnected) return;
   if (!connectionString) {
     console.warn('⚠️ DATABASE_URL or POSTGRES_URI not set - database features will not work');
     return;
@@ -70,9 +70,9 @@ const attemptConnection = async () => {
     connectionAttempted = true;
     try {
       console.log('🔄 Attempting PostgreSQL connection...');
-      await connectDB();
-      dbConnected = true;
-      console.log('✅ Database connection established');
+      const p = await connectDB();
+      dbConnected = p !== null;
+      if (dbConnected) console.log('✅ Database connection established');
     } catch (err) {
       console.error('❌ Database connection failed:', err.message);
       dbConnected = false;
@@ -84,18 +84,21 @@ const attemptConnection = async () => {
 // Attempt initial connection
 attemptConnection();
 
-// Middleware to ensure DB connection before database operations
+// Middleware to ensure DB connection before database operations (Vercel serverless cold start)
 const { isConnected } = require('../config/database');
+const ensureDb = async (req, res, next) => {
+  if (!isConnected() && connectionString) await attemptConnection();
+  next();
+};
+app.use('/api/users', ensureDb);
+app.use('/api/auth', ensureDb);
+app.use('/api/admin', ensureDb);
 app.use('/api/lost-found', async (req, res, next) => {
-  if ((req.method === 'POST' || req.method === 'GET') && !isConnected()) {
-    await attemptConnection();
-  }
+  if ((req.method === 'POST' || req.method === 'GET') && !isConnected()) await attemptConnection();
   next();
 });
 app.use('/api/medical', async (req, res, next) => {
-  if ((req.method === 'POST' || req.method === 'GET') && !isConnected()) {
-    await attemptConnection();
-  }
+  if ((req.method === 'POST' || req.method === 'GET') && !isConnected()) await attemptConnection();
   next();
 });
 app.use('/api/qr', async (req, res, next) => {

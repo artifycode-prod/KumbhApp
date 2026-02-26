@@ -106,9 +106,11 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Get users error:', error);
+    const hint = process.env.VERCEL ? (error.message || 'Check DATABASE_URL in Vercel env vars') : 'Server error';
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error',
+      hint: process.env.VERCEL ? hint : undefined
     });
   }
 });
